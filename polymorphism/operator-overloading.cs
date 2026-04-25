@@ -1,7 +1,26 @@
 /*
-In c# we can also override operators to provide custom behaviour.
+Operator Overloading in C#
+    - Operator overloading allows you to redefine how operators (like +, -, <, ==) work for user-defined types (classes/structs).
 
-For example, we can override the + operator to add two objects of a class together.
+
+Important:
+    - Must be public
+    - Must be static
+    - At least one operand must be of the class
+
+Why Operator Overloading Must Be Static in C#?
+
+    - The operater overloadibng is methods on more then 1 of the operands.
+    - so it is associated to the class rather than to the instance of the class.
+
+    - if it was not static then it will be associated  with just the instance of the class
+
+What happens if you try to make them instance methods?
+    If you try:
+        - You’ll get a compile-time error because:
+        - C# does not allow operator overloading methods to be non-static
+    
+
 */
 
 class Person
