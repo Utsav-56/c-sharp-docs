@@ -71,6 +71,7 @@ Future<void> main(List<String> args) async {
 
   int success = 0;
   int failed = 0;
+  int skipped = 0;
 
   for (final file in csFiles) {
     final name = buildName(rootPath, file.path);
@@ -79,7 +80,21 @@ Future<void> main(List<String> args) async {
     final title = '$csharpIcon $name                           Utsav Pokharel';
 
     print('  → $name');
+    // Check if output file exists and compare modification dates
+    final outputFile = File(outputPath);
+    if (outputFile.existsSync()) {
+      final sourceModified = await file.lastModified();
+      final outputModified = await outputFile.lastModified();
 
+      // Skip if source file hasn't changed since last capture
+      if (sourceModified.isBefore(outputModified) ||
+          sourceModified.isAtSameMomentAs(outputModified)) {
+        final readableTime = outputModified.toString().split('.')[0];
+        print('     ℹ no change in $name since $readableTime');
+        skipped++;
+        continue;
+      }
+    }
     final result = await Process.run('codesnap', [
       '-f',
       file.path,
@@ -131,5 +146,5 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  print('\nDone. $success succeeded, $failed failed.');
+  print('\nDone. $success succeeded, $failed failed, $skipped skipped.');
 }
