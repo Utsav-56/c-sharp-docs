@@ -6,19 +6,32 @@ using System;
 
 class Matrix
 {
-
-    public int Rows { get; }
-    public int Cols { get; }
     public int[,] data;
+    public int rows, cols;
 
-
-    public Matrix(int rows, int cols)
+    /*
+    Ref means passing pointer to array,
+    must know types of params to understand ref
+    */
+    public Matrix(ref int[,] arr)
     {
-        Rows = rows;
-        Cols = cols;
-        data = new int[rows, cols];
+        data = arr;
+
+        /*
+        GetLength() method is used to get the number of rows and columns in the array.
+
+        GetLength(0) returns the number of rows (the length of the first dimension).
+        GetLength(1) returns the number of columns (the length of the second dimension).
+        */
+        rows = arr.GetLength(0);
+        cols = arr.GetLength(1);
     }
 
+
+    /*
+    Indexer to access matrix elements
+        - Allows us to use the syntax m[i, j] to access the element at row i and column j of the matrix.
+    */
     public int this[int i, int j]
     {
         get { return data[i, j]; }
@@ -26,15 +39,34 @@ class Matrix
     }
 
 
+    /*
+    We make a display method to print the matrix in a readable format.
+    */
+    public void Display()
+    {
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < cols; j++)
+            {
+                Console.Write(data[i, j] + " ");
+            }
+            Console.WriteLine();
+        }
+    }
+
+
     public static Matrix operator +(Matrix m1, Matrix m2)
     {
-        if (m1.Rows != m2.Rows || m1.Cols != m2.Cols)
-            throw new InvalidOperationException("Matrices must have the same dimensions for addition.");
-
-        Matrix result = new Matrix(m1.Rows, m1.Cols);
-        for (int i = 0; i < m1.Rows; i++)
+        if (m1.rows != m2.rows || m1.cols != m2.cols)
         {
-            for (int j = 0; j < m1.Cols; j++)
+            throw new Exception("Matrices must have the same dimensions for addition.");
+        }
+
+        Matrix result = new Matrix(m1.rows, m1.cols);
+
+        for (int i = 0; i < m1.rows; i++)
+        {
+            for (int j = 0; j < m1.cols; j++)
             {
                 result[i, j] = m1[i, j] + m2[i, j];
             }
@@ -45,26 +77,26 @@ class Matrix
 
     public static Matrix operator *(Matrix m1, Matrix m2)
     {
-        if (m1.Cols != m2.Rows)
-            throw new Exception("Number of columns in the first matrix must be equal to the number of rows in the second matrix.");
-
-        Matrix result = new Matrix(m1.Rows, m2.Cols);
-
-        for (int i = 0; i < m1.Rows; i++)
+        if (m1.cols != m2.rows)
         {
-            for (int j = 0; j < m2.Cols; j++)
+            throw new Exception("Number of columns in the 1st matrix must be equal to the number of rows in the 2nd matrix.");
+        }
+
+        Matrix result = new Matrix(m1.rows, m2.cols);
+
+        for (int i = 0; i < m1.rows; i++)
+        {
+            for (int j = 0; j < m2.cols; j++)
             {
-                int sum = 0;
-                for (int k = 0; k < m1.Cols; k++)
+
+                for (int k = 0; k < m1.cols; k++)
                 {
-                    sum += m1[i, k] * m2[k, j];
+                    result[i, j] += m1[i, k] * m2[k, j];
                 }
-                result[i, j] = sum;
             }
         }
         return result;
     }
-
 }
 
 
@@ -72,33 +104,26 @@ class Program
 {
     static void Main(string[] args)
     {
-        Matrix m1 = new Matrix(2, 2);
-        m1[0, 0] = 1; m1[0, 1] = 2;
-        m1[1, 0] = 3; m1[1, 1] = 4;
+        int[,] a = {
+            { 1, 2 },
+            { 3, 4 }
+        };
 
-        Matrix m2 = new Matrix(2, 2);
-        m2[0, 0] = 5; m2[0, 1] = 6;
-        m2[1, 0] = 7; m2[1, 1] = 8;
+        int[,] b = {
+            { 5, 6 },
+            { 7, 8 }
+        };
 
-        Matrix sum = m1 + m2;
-        Matrix product = m1 * m2;
+        Matrix m1 = new Matrix(ref a);
+        Matrix m2 = new Matrix(ref b);
+
+        Matrix m3 = m1 + m2;
+        Matrix m4 = m1 * m2;
 
         Console.WriteLine("Sum of matrices:");
-        PrintMatrix(sum);
+        m3.Display();
 
         Console.WriteLine("Product of matrices:");
-        PrintMatrix(product);
-    }
-
-    static void PrintMatrix(Matrix matrix)
-    {
-        for (int i = 0; i < matrix.Rows; i++)
-        {
-            for (int j = 0; j < matrix.Cols; j++)
-            {
-                Console.Write(matrix[i, j] + " ");
-            }
-            Console.WriteLine();
-        }
+        m4.Display();
     }
 }

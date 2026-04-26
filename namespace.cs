@@ -14,13 +14,11 @@ Features of namespaces in C#:
 
 
 THE `using` DIRECTIVE:
-The `using` directive is used to import a namespace into a C# file
-this allows you to use the types defined in that namespace without having to specify the fully qualified name of the type.
+    - The `using` directive is used to import a namespace into a C# file
+    - this allows you to use the types defined in that namespace without having to specify the fully qualified name of the type.
+
 For example, if you have a class named `Animal` in a namespace called `ns1`, 
 you can use the `using` directive to import the `ns1` namespace and then use the `Animal` class directly without having to write `ns1.Animal` every time.
-
-
-
 */
 
 
@@ -40,9 +38,9 @@ namespace ns2
 {
     class Animal
     {
-        public void sound()
+        public void eat()
         {
-            Console.WriteLine("DOG BARKS");
+            Console.WriteLine("DOG EATS FOOD");
         }
     }
 
@@ -69,13 +67,13 @@ class Program
         animal1.sound(); // Output: ANIMAL MAKES SOUND
 
         ns2.Animal animal2 = new ns2.Animal();
-        animal2.sound(); // Output: DOG BARKS
+        animal2.eat(); // Output: DOG EATS FOOD
 
         // Using 'using' directive to import the namespace
         // the using must be at the top of the file, above the namespace declaration
 
         Animal animal3 = new Animal(); // This will cause a conflict because both namespaces have a class named Animal
-        animal3.sound(); // This will cause a compile-time error because the compiler does not know which Animal class to use
+        animal3.eat(); // This will cause a compile-time error because the compiler does not know which Animal class to use
 
 
     }
