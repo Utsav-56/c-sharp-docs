@@ -1,123 +1,64 @@
 #!/usr/bin/env dart
-// snap_cs.dart — Scan all .cs files in CWD and generate codesnap PNGs
-// Usage: dart snap_cs.dart [optional: root_dir]
-
 import 'dart:io';
 
-
-/// FInd if cwd is a git repo or we are inside a git repo, by looking for .git directory in current and parent dirs.
-bool isGitRepository(Directory dir) {
-  
-  /// use git command to check if we are in a git repository
-  final result = Process.runSync('git', ['rev-parse', '--is-inside-work-tree'], workingDirectory: dir.path);
-  return result.exitCode == 0 && result.stdout.toString().trim() == 'true';
+String run(List<String> args, {bool fail = true}) {
+  final r = Process.runSync('git', args);
+  if (fail && r.exitCode != 0) {
+    stderr.writeln(r.stderr);
+    exit(r.exitCode);
+  }
+  return r.stdout.toString().trim();
 }
 
-String findCurrentGitBranch(Directory dir) {
-  final result = Process.runSync('git', ['rev-parse', '--abrev-ref', 'HEAD'], workingDirectory: dir.path);
-  if (result.exitCode == 0) {
-    return result.stdout.toString().trim();
-  } else {
-    return 'unknown';
-  }
-} 
+bool isRepo() =>
+    Process.runSync('git', ['rev-parse', '--is-inside-work-tree']).exitCode == 0;
 
+void main(List<String> args) async {
+  final push = args.contains('--push');
 
-/// checks if there is any remote 
-/// if yes then returns the remote name iff there is only one remote, otherwise returns null
-String? findGitRemote(Directory dir) {
-  final result = Process.runSync('git', ['remote'], workingDirectory: dir.path);
-  if (result.exitCode == 0) {
-    final remotes = result.stdout.toString().trim().split('\n').where((r) => r.isNotEmpty).toList();
-    if (remotes.length == 1) {
-      return remotes.first;
-    }
-  }
-  return null;
-}
-
-T? tryParse<T>(String input) {
-
-  if (input.trim().isEmpty) {
-    stderr.writeln('Error: Commit message cannot be empty.');
-    return null;
+  if (!isRepo()) {
+    print('Initializing repo...');
+    run(['init']);
   }
 
-  try {
-    if (T == int) {
-      return int.parse(input) as T;
-    } else if (T == double) {
-      return double.parse(input) as T;
-    } else if (T == String) {
-      return input as T;
-    } else {
-      throw UnsupportedError('Unsupported type: $T');
-    }
-  } catch (e) {
-    stderr.writeln('Error parsing input: $e');
-    return null;
-  }
-}
+  stdout.write('Commit message: ');
+  final msg = stdin.readLineSync()?.trim();
+  if (msg == null || msg.isEmpty) exit(1);
 
+  run(['add', '.']);
+  run(['commit', '-m', msg]);
+  print('Committed.');
 
-T? input<T>(String prompt) {
-  stdout.write(prompt);
-  return tryParse<T>(stdin.readLineSync() ?? '');
-}
+  if (!push) return;
 
-void main(List<String> args) {
-  bool pushAlso = args.contains('--push');
+  final branch = run(['rev-parse', '--abbrev-ref', 'HEAD']);
+  final remotes = run(['remote'])
+      .split(RegExp(r'\r?\n'))
+      .where((e) => e.isNotEmpty)
+      .toList();
 
-  final currentDir = Directory.current;
-
-  if (!isGitRepository(currentDir)) {
-    stderr.writeln('Error: current directory is not a git repository. Creating one...');
-    final initResult = Process.runSync('git', ['init'], workingDirectory: currentDir.path);
-    if (initResult.exitCode != 0) {
-      stderr.writeln('Failed to initialize git repository: ${initResult.stderr}');
-      exit(1);
-    }
-
-  }  
-
-  String? commitMsg = input<String>('Enter commit message: \n');
-  if (commitMsg == null || commitMsg.trim().isEmpty) {
-    stderr.writeln('Error: commit message cannot be empty.');
+  if (remotes.isEmpty) {
+    stderr.writeln('No remote found.');
     exit(1);
   }
 
-  // Stage all changes
-  final addResult = Process.runSync('git', ['add', '.'], workingDirectory: currentDir.path);
-  if (addResult.exitCode != 0) {
-    stderr.writeln('Failed to stage changes: ${addResult.stderr}');
-    exit(1);
-  }
+  final remote = remotes.length == 1
+      ? remotes.first
+      : () {
+          for (var i = 0; i < remotes.length; i++) {
+            print('[${i + 1}] ${remotes[i]}');
+          }
+          stdout.write('Choose remote: ');
+          final i = int.tryParse(stdin.readLineSync() ?? '');
+          if (i == null || i < 1 || i > remotes.length) exit(1);
+          return remotes[i - 1];
+        }();
 
-  // Commit with the provided message
-  final commitResult = Process.runSync('git', ['commit', '-m', commitMsg], workingDirectory: currentDir.path);
-  if (commitResult.exitCode != 0) {
-    stderr.writeln('Failed to commit changes: ${commitResult.stderr}');
-    exit(1);
-  }
+  print('Pushing to $remote/$branch...\n');
 
-  print('Changes committed successfully with message: "$commitMsg"');
+  final p = await Process.start('git', ['push', remote, branch], runInShell: true);
+  stdout.addStream(p.stdout);
+  stderr.addStream(p.stderr);
 
-  if (pushAlso) {
-    final branch = findCurrentGitBranch(currentDir);
-    print('Pushing to remote branch: $branch');
-
-    final remote = findGitRemote(currentDir);
-    if (remote == null) {
-      stderr.writeln('Error: No git remote found. Please add a remote to push to.');
-      exit(1);
-    }
-
-    final pushResult = Process.runSync('git', ['push', remote, branch], workingDirectory: currentDir.path);
-    if (pushResult.exitCode != 0) {
-      stderr.writeln('Failed to push changes: ${pushResult.stderr}');
-      exit(1);
-    }
-    print('Changes pushed successfully.');
-  }
-
+  exit(await p.exitCode);
 }
