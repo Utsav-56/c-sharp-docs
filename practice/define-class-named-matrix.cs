@@ -9,20 +9,10 @@ class Matrix
     public int[,] data;
     public int rows, cols;
 
-    /*
-    Ref means passing pointer to array,
-    must know types of params to understand ref
-    */
     public Matrix(ref int[,] arr)
     {
         data = arr;
 
-        /*
-        GetLength() method is used to get the number of rows and columns in the array.
-
-        GetLength(0) returns the number of rows (the length of the first dimension).
-        GetLength(1) returns the number of columns (the length of the second dimension).
-        */
         rows = arr.GetLength(0);
         cols = arr.GetLength(1);
     }
