@@ -57,11 +57,6 @@ class Matrix
 
     public static Matrix operator +(Matrix m1, Matrix m2)
     {
-        if (m1.rows != m2.rows || m1.cols != m2.cols)
-        {
-            throw new Exception("Matrices must have the same dimensions for addition.");
-        }
-
         Matrix result = new Matrix(m1.rows, m1.cols);
 
         for (int i = 0; i < m1.rows; i++)
@@ -69,30 +64,6 @@ class Matrix
             for (int j = 0; j < m1.cols; j++)
             {
                 result[i, j] = m1[i, j] + m2[i, j];
-            }
-        }
-        return result;
-    }
-
-
-    public static Matrix operator *(Matrix m1, Matrix m2)
-    {
-        if (m1.cols != m2.rows)
-        {
-            throw new Exception("Number of columns in the 1st matrix must be equal to the number of rows in the 2nd matrix.");
-        }
-
-        Matrix result = new Matrix(m1.rows, m2.cols);
-
-        for (int i = 0; i < m1.rows; i++)
-        {
-            for (int j = 0; j < m2.cols; j++)
-            {
-
-                for (int k = 0; k < m1.cols; k++)
-                {
-                    result[i, j] += m1[i, k] * m2[k, j];
-                }
             }
         }
         return result;
@@ -118,12 +89,9 @@ class Program
         Matrix m2 = new Matrix(ref b);
 
         Matrix m3 = m1 + m2;
-        Matrix m4 = m1 * m2;
 
         Console.WriteLine("Sum of matrices:");
         m3.Display();
 
-        Console.WriteLine("Product of matrices:");
-        m4.Display();
     }
 }
