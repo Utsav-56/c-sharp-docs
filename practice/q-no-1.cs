@@ -38,17 +38,18 @@ class Box
     }
 
 
-    public static Box operator <(Box b1, Box b2)
+    public static bool operator <(Box b1, Box b2)
     {
         return b1.Volume() < b2.Volume();
     }
 
-    public static Box operator ==(Box b1, Box b2)
+    public static bool operator ==(Box b1, Box b2)
     {
         return b1.Length == b2.Length && b1.Width == b2.Width && b1.Height == b2.Height;
     }
 
-    public static Box operator &(Box b1, Box b2)
+
+    public static bool operator &(Box b1, Box b2)
     {
         return b1.SurfaceArea() & b2.SurfaceArea();
     }

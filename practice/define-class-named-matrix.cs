@@ -17,7 +17,7 @@ class Matrix
         cols = arr.GetLength(1);
     }
 
-
+ 
     /*
     Indexer to access matrix elements
         - Allows us to use the syntax m[i, j] to access the element at row i and column j of the matrix.
