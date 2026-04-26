@@ -1,5 +1,8 @@
 #!/usr/bin/env dart
+
 import 'dart:io';
+
+import 'snap.dart';
 
 String run(List<String> args, {bool fail = true}) {
   final r = Process.runSync('git', args);
@@ -13,7 +16,10 @@ String run(List<String> args, {bool fail = true}) {
 bool isRepo() =>
     Process.runSync('git', ['rev-parse', '--is-inside-work-tree']).exitCode == 0;
 
-void main(List<String> args) async {
+Future<void> invoke(List<String> args) async {
+  final snap = Snapper();
+  await snap.run([]);
+
   final push = args.contains('--push');
 
   if (!isRepo()) {
@@ -32,10 +38,9 @@ void main(List<String> args) async {
   if (!push) return;
 
   final branch = run(['rev-parse', '--abbrev-ref', 'HEAD']);
-  final remotes = run(['remote'])
-      .split(RegExp(r'\r?\n'))
-      .where((e) => e.isNotEmpty)
-      .toList();
+  final remotes = run([
+    'remote',
+  ]).split(RegExp(r'\r?\n')).where((e) => e.isNotEmpty).toList();
 
   if (remotes.isEmpty) {
     stderr.writeln('No remote found.');
@@ -61,4 +66,13 @@ void main(List<String> args) async {
   stderr.addStream(p.stderr);
 
   exit(await p.exitCode);
+}
+
+Future<void> main(List<String> args) async {
+  try {
+    await invoke(args);
+  } catch (e) {
+    stderr.writeln('Error: $e');
+    exit(1);
+  }
 }
