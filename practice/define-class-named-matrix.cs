@@ -17,6 +17,13 @@ class Matrix
         cols = arr.GetLength(1);
     }
 
+    public Matrix(int rows, int cols)
+    {
+        this.rows = rows;
+        this.cols = cols;
+        data = new int[rows, cols];
+    }
+
  
     /*
     Indexer to access matrix elements

@@ -1,0 +1,120 @@
+#!/bin/bash
+
+set -evx
+
+if [ -z "$1" ]; then
+    echo "Usage: sqnet <filename.cs>"
+    exit 1
+fi
+
+FILE_PATH=$(realpath "$1")
+
+# Use a standard shared location for the runner environment
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$SCRIPT_DIR/zsql-temp"
+PODMAN_FILE="$BASE_DIR/docker-compose.yml"
+SQL_PROJDIR="$BASE_DIR"
+
+mkdir -p "$BASE_DIR"
+
+# Handle Podman Compose Configuration
+if [ ! -f "$PODMAN_FILE" ]; then
+    echo "Creating Podman Compose environment..."
+    cat << 'EOF' > "$PODMAN_FILE"
+version: '3.8'
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql_test_db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrongPassword123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+volumes:
+  mssql_data:
+    driver: local
+EOF
+fi
+
+# Bring up DB if it's not already running
+if ! podman ps | grep -q sql_test_db; then
+    echo "Starting SQL Server container..."
+    podman-compose -f "$PODMAN_FILE" up -d
+    echo "Waiting 5 seconds for initialization..."
+    sleep 5
+fi
+
+# Handle Permanent Project Initialization
+if [ ! -f "$SQL_PROJDIR/zsql-temp.csproj" ]; then
+    echo "Initializing permanent .NET compilation space..."
+    mkdir -p "$SQL_PROJDIR"
+    echo "*" > "$SQL_PROJDIR/.gitignore"
+    
+    cd "$SQL_PROJDIR"
+    dotnet new console --force > /dev/null
+    dotnet add package System.Data.SqlClient > /dev/null
+    
+    sed -i '/<\/PropertyGroup>/i \    <NoWarn>$(NoWarn);CS0618;CS8600;CS8603<\/NoWarn>' zsql-temp.csproj
+
+    # CRITICAL: Remove the default template file so it doesn't clash with your mains
+    rm -f Program.cs 
+fi
+
+FIRST_LINE_COMMENT=$(head -n 1 "$FILE_PATH" | sed -n 's|^\s*//\s*\(.*\)$|\1|p' | tr -d '[:space:]')
+
+DB_NAME="${DB:-${FIRST_LINE_COMMENT:-LibraryDb}}"
+SA_PASSWORD="YourStrongPassword123!"
+
+echo "Running: '$FILE_PATH'"
+echo "Targeting Database: '$DB_NAME'"
+echo ""
+
+
+SQL_DIR="$SQL_PROJDIR/sql"
+SQL_FILE="$SQL_DIR/$DB_NAME.sql"
+
+mkdir -p "$SQL_DIR"
+
+if [ -f "$SQL_FILE" ]; then
+    echo "Applying schema: $SQL_FILE"
+
+    podman cp "$SQL_FILE" sql_test_db:/tmp/schema.sql
+
+    podman exec \
+        sql_test_db \
+        /opt/mssql-tools18/bin/sqlcmd \
+        -S localhost \
+        -U sa \
+        -P "$SA_PASSWORD" \
+        -C \
+        -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'$DB_NAME') CREATE DATABASE [$DB_NAME];"
+
+
+    podman exec \
+        sql_test_db \
+        /opt/mssql-tools18/bin/sqlcmd \
+        -S localhost \
+        -U sa \
+        -P "$SA_PASSWORD" \
+        -C \
+        -d "$DB_NAME" \
+        -i /tmp/schema.sql
+
+    podman exec sql_test_db rm -f /tmp/schema.sql
+fi
+
+# Dynamic execution block via clean symlink
+HASH=$(echo -n "$FILE_PATH" | md5sum | awk '{print $1}')
+TARGET_FILENAME="$SQL_PROJDIR/$HASH.cs"
+
+# Ensure clean state, link, run, and clean up safely
+ln -sf "$FILE_PATH" "$TARGET_FILENAME"
+
+# Trap structural exits to ensure clean-up happens even if dotnet run crashes
+trap 'rm -f "$TARGET_FILENAME"' EXIT
+
+cd "$SQL_PROJDIR"
+dotnet run
